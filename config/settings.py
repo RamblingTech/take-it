@@ -72,6 +72,8 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                # Our own: makes {{ organization }} available on every page.
+                "core.context_processors.organization",
             ],
         },
     },
@@ -95,6 +97,14 @@ DATABASES = {
         "PORT": "5432",
     }
 }
+
+
+# ---- Logging in and out ----
+
+# Where to send people who need to log in, and where they land afterwards.
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "login"
 
 
 # ---- Passwords ----

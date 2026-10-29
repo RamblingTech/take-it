@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% comment %}
+  The home page. For now it just proves login and roles work.
+  It will grow into the dashboard in a later phase.
+{% endcomment %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<h1 class="h3">Welcome, {{ user.get_username }}</h1>
+<p class="text-muted">{{ organization.name }}</p>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <h2 class="h6 text-uppercase text-muted">Your role</h2>
+    {% for role in my_roles %}
+      <span class="badge text-bg-primary fs-6">{{ role }}</span>
+    {% empty %}
+      {# "empty" shows when the list has nothing in it. #}
+      <span class="text-danger">No role yet. Ask an admin to give you one.</span>
+    {% endfor %}
+  </div>
+</div>
+
+{# Only Admins see the link to the back-office admin pages. #}
+{% if is_admin %}
+  <a href="{% url 'admin:index' %}" class="btn btn-outline-secondary">Open admin settings</a>
+{% endif %}
+{% endblock %}

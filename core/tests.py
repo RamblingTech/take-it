@@ -33,3 +33,21 @@ class OrganizationTests(TestCase):
         Organization(name="Second").save()
         self.assertEqual(Organization.objects.count(), 1)
         self.assertEqual(Organization.load().name, "Second")
+
+
+class LoginAndHomePageTests(TestCase):
+    def test_home_page_sends_visitors_to_login(self):
+        response = self.client.get("/")
+        self.assertRedirects(response, "/accounts/login/?next=/")
+
+    def test_login_page_shows_tagline(self):
+        response = self.client.get("/accounts/login/")
+        self.assertContains(response, "Track Assets, Know Everything")
+
+    def test_logged_in_user_sees_their_role(self):
+        finance = User.objects.create_user("fin", password="x")
+        finance.groups.add(Group.objects.get(name=FINANCE))
+        self.client.force_login(finance)
+        response = self.client.get("/")
+        self.assertContains(response, "Finance")
+        self.assertNotContains(response, "Open admin settings")
