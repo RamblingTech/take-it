@@ -45,6 +45,28 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ---- The backup container ----
+  backup:
+    # Same Postgres image, because it already has the backup tools (pg_dump, psql).
+    image: postgres:17
+    env_file: .env
+    # Tell the backup tools which database to connect to, and how to log in.
+    environment:
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    # Share our scripts with the container, and save backups to ./backups on your computer.
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./backups:/backups
+    # Run the nightly backup loop instead of starting another database.
+    command: sh /scripts/backup-nightly.sh
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 # Named volumes: storage that Docker keeps safe between restarts.
 volumes:
   db_data:

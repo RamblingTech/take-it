@@ -1,0 +1,4 @@
+# .gitattributes: rules for how Git stores certain files.
+# Shell scripts must keep Linux-style line endings, even when checked out
+# on Windows, or they fail to run inside the (Linux) containers.
+*.sh text eol=lf
