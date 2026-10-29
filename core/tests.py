@@ -51,3 +51,34 @@ class LoginAndHomePageTests(TestCase):
         response = self.client.get("/")
         self.assertContains(response, "Finance")
         self.assertNotContains(response, "Open admin settings")
+
+
+class OrganizationSettingsPageTests(TestCase):
+    def test_admin_can_set_time_zone_and_backup_schedule(self):
+        boss = User.objects.create_superuser("boss", password="x")
+        self.client.force_login(boss)
+        Organization.load()
+        response = self.client.post("/admin/core/organization/1/change/", {
+            "name": "Acme",
+            "default_timezone": "America/Chicago",
+            "backup_time": "03:30",
+            "backup_keep_days": "30",
+        })
+        self.assertEqual(response.status_code, 302)  # 302 = saved, sent back to the list
+        organization = Organization.load()
+        self.assertEqual(organization.default_timezone, "America/Chicago")
+        self.assertEqual(organization.backup_time.strftime("%H:%M"), "03:30")
+        self.assertEqual(organization.backup_keep_days, 30)
+
+    def test_time_zone_must_be_from_the_list(self):
+        boss = User.objects.create_superuser("boss", password="x")
+        self.client.force_login(boss)
+        Organization.load()
+        response = self.client.post("/admin/core/organization/1/change/", {
+            "name": "Acme",
+            "default_timezone": "Mars/Base",
+            "backup_time": "02:00",
+            "backup_keep_days": "14",
+        })
+        self.assertEqual(response.status_code, 200)  # 200 = page shown again with an error
+        self.assertEqual(Organization.load().default_timezone, "UTC")

@@ -7,7 +7,10 @@ Each field (name, logo, ...) becomes a column in that table.
 
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import datetime
+
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -39,7 +42,22 @@ class Organization(models.Model):
         max_length=64,
         default="UTC",
         validators=[validate_timezone],
-        help_text='A time zone name, like "America/Chicago" or "Europe/London".',
+        help_text="Used for showing dates and times, and for the nightly backup schedule.",
+    )
+
+    # ---- Nightly backups (read by the backup container every minute) ----
+
+    # What time of day, in the time zone above, the nightly backup runs.
+    backup_time = models.TimeField(
+        default=datetime.time(2, 0),
+        help_text="The time of day the nightly backup runs, e.g. 02:00.",
+    )
+
+    # How many days of backups to keep. Older backup files are deleted.
+    backup_keep_days = models.PositiveIntegerField(
+        default=14,
+        validators=[MinValueValidator(1)],
+        help_text="Backups older than this many days are deleted automatically.",
     )
 
     class Meta:

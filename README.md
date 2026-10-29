@@ -38,7 +38,6 @@ copy .env.example .env
 - `DJANGO_SECRET_KEY` to a long random string
 - `POSTGRES_PASSWORD` to a strong password
 - `DJANGO_ALLOWED_HOSTS` to include this computer's IP address or name
-- `TZ` to your time zone (for example `America/Chicago`)
 
 **4. Build and start TAKE IT**
 ```
@@ -59,7 +58,7 @@ docker compose exec web python manage.py createsuperuser
 and log in.
 
 **8. Set up your company** in **Open admin settings > Organization settings**:
-your company name, logo and time zone.
+your company name, logo, time zone and nightly backup time.
 
 ---
 
@@ -111,10 +110,10 @@ just records in TAKE IT.
 
 ## Backups
 
-The `backup` container saves a copy of the database every night at
-`BACKUP_TIME` (set in `.env`, 02:00 by default) into the `backups` folder.
-Backups older than `BACKUP_KEEP_DAYS` days (14 by default) are deleted
-automatically.
+The `backup` container saves a copy of the database every night into the
+`backups` folder. Choose the time, and how many days of backups to keep,
+on the **Organization settings** page (02:00 and 14 days by default).
+Older backups are deleted automatically.
 
 **Make a backup right now**
 ```
