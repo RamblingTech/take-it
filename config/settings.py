@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # ---- TAKE IT's own apps ----
+    "core",  # Organization settings and shared pieces
 ]
 
 # Middleware are checkpoints every web request passes through, in order.
@@ -121,6 +123,15 @@ USE_TZ = True
 # ---- Static files (CSS, JavaScript, images that ship with TAKE IT) ----
 
 STATIC_URL = "static/"
+
+
+# ---- Media files (files people upload, like the company logo) ----
+
+# The web address uploaded files are shown from, e.g. /media/logos/logo.png.
+MEDIA_URL = "media/"
+
+# The folder uploaded files are saved in (kept out of Git by .gitignore).
+MEDIA_ROOT = BASE_DIR / "media"
 
 
 # The type of ID number Django gives every new database record.
