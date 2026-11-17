@@ -8,7 +8,7 @@ and hands it to a template (the HTML) to display.
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
-from .roles import ADMIN, ALL_ROLES, user_has_role
+from .roles import ALL_ROLES, user_has_role
 
 
 @login_required  # Not logged in? Django sends you to the login page first.
@@ -19,7 +19,5 @@ def home(request):
     my_roles = [role for role in ALL_ROLES if user_has_role(request.user, role)]
 
     # render() fills in the template with these values and returns the page.
-    return render(request, "core/home.html", {
-        "my_roles": my_roles,
-        "is_admin": user_has_role(request.user, ADMIN),
-    })
+    # (is_admin for the admin button comes from core/context_processors.py.)
+    return render(request, "core/home.html", {"my_roles": my_roles})

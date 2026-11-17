@@ -64,3 +64,74 @@ class DevicePageTests(TestCase):
 
     def test_missing_device_is_page_not_found(self):
         self.assertEqual(self.client.get("/devices/99999/").status_code, 404)
+
+
+class DeviceEditingTests(TestCase):
+    def setUp(self):
+        self.tech = User.objects.create_user("tech", password="x")
+        self.tech.groups.add(Group.objects.get(name="Technician"))
+        self.client.force_login(self.tech)
+
+        dell = Manufacturer.objects.create(name="Dell")
+        self.latitude = AssetModel.objects.create(
+            name="Latitude 7450", manufacturer=dell, category=Category.objects.get(name="Laptop"),
+        )
+        self.ready = Status.objects.get(name="Ready to Deploy")
+        self.repair = Status.objects.get(name="In Repair")
+        CustomField.objects.create(name="PO Number", key="po_number")
+        CustomField.objects.create(name="Warranty ends", key="warranty_ends", field_type=CustomField.DATE)
+        CustomField.objects.create(name="Encrypted", key="encrypted", field_type=CustomField.YES_NO)
+
+    def form_data(self, **changes):
+        """A filled-in Add/Edit form, with any changes we want for a test."""
+        data = {
+            "asset_tag": "A-100", "serial": "SN100", "name": "", "model": self.latitude.pk,
+            "status": self.ready.pk, "purchase_date": "", "notes": "",
+            "cf_po_number": "PO-1", "cf_warranty_ends": "2028-01-31", "cf_encrypted": "on",
+        }
+        data.update(changes)
+        return data
+
+    def test_technician_can_add_a_device_with_custom_fields(self):
+        response = self.client.post("/devices/add/", self.form_data())
+        device = Device.objects.get(asset_tag="A-100")
+        self.assertRedirects(response, f"/devices/{device.pk}/")
+        self.assertEqual(device.created_by, self.tech)
+        self.assertEqual(device.custom_data, {"po_number": "PO-1", "warranty_ends": "2028-01-31", "encrypted": True})
+        self.assertTrue(device.activity.filter(action=ActivityLog.CREATED).exists())
+
+    def test_duplicate_asset_tag_shows_an_error_instead_of_saving(self):
+        self.client.post("/devices/add/", self.form_data())
+        response = self.client.post("/devices/add/", self.form_data(serial="OTHER"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "already exists")
+        self.assertEqual(Device.objects.count(), 1)
+
+    def test_changing_status_is_logged(self):
+        self.client.post("/devices/add/", self.form_data())
+        device = Device.objects.get(asset_tag="A-100")
+        self.client.post(f"/devices/{device.pk}/edit/", self.form_data(status=self.repair.pk))
+        change = device.activity.get(action=ActivityLog.STATUS_CHANGE)
+        self.assertEqual(change.notes, "Ready to Deploy → In Repair")
+
+    def test_technician_cannot_delete(self):
+        self.client.post("/devices/add/", self.form_data())
+        device = Device.objects.get(asset_tag="A-100")
+        self.assertEqual(self.client.post(f"/devices/{device.pk}/delete/").status_code, 403)
+        self.assertTrue(Device.objects.filter(pk=device.pk).exists())
+
+    def test_admin_can_delete(self):
+        self.client.post("/devices/add/", self.form_data())
+        device = Device.objects.get(asset_tag="A-100")
+        admin_user = User.objects.create_user("adm", password="x")
+        admin_user.groups.add(Group.objects.get(name="Admin"))
+        self.client.force_login(admin_user)
+        self.assertRedirects(self.client.post(f"/devices/{device.pk}/delete/"), "/devices/")
+        self.assertFalse(Device.objects.filter(pk=device.pk).exists())
+
+    def test_finance_cannot_add_devices(self):
+        finance = User.objects.create_user("fin", password="x")
+        finance.groups.add(Group.objects.get(name="Finance"))
+        self.client.force_login(finance)
+        self.assertEqual(self.client.get("/devices/add/").status_code, 403)
+        self.assertNotContains(self.client.get("/devices/"), "Add device")

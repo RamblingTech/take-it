@@ -77,6 +77,8 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 # Our own: makes {{ organization }} available on every page.
                 "core.context_processors.organization",
+                # Our own: makes {{ can_edit_devices }} and {{ is_admin }} available on every page.
+                "core.context_processors.permissions",
             ],
         },
     },

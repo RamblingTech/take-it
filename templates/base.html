@@ -45,6 +45,11 @@
   </nav>
 
   <main class="container">
+    {# One-time messages, like "Device A-001 was added." #}
+    {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %}">{{ message }}</div>
+    {% endfor %}
+
     {% block content %}{% endblock %}
   </main>
 

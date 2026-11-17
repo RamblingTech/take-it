@@ -3,13 +3,15 @@ views.py for the inventory app: the Python functions that build the
 device pages.
 """
 
+from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 
-from core.roles import ALL_ROLES, role_required
+from core.roles import ADMIN, ALL_ROLES, TECHNICIAN, role_required
 
-from .models import Category, CustomField, Device, Location, Status
+from .forms import DeviceForm
+from .models import ActivityLog, Category, CustomField, Device, Location, Status
 
 
 @role_required(*ALL_ROLES)  # Any of the four roles can look at devices.
@@ -87,3 +89,68 @@ def device_detail(request, pk):
         "custom_fields": custom_fields,
         "history": history,
     })
+
+
+@role_required(ADMIN, TECHNICIAN)  # Only Admins and Technicians can add devices.
+def device_create(request):
+    """The "Add device" page."""
+
+    # A web page is first shown with GET. When "Save" is clicked, the
+    # filled-in form comes back with POST.
+    if request.method == "POST":
+        form = DeviceForm(request.POST)
+        # is_valid() runs all the checks. If any fail, the page is shown
+        # again with the problems marked in red.
+        if form.is_valid():
+            device = form.save(commit=False)
+            device.created_by = request.user
+            device.save()
+            ActivityLog.record(device, ActivityLog.CREATED, user=request.user)
+            # A one-time green message shown on the next page.
+            messages.success(request, f"Device {device.asset_tag} was added.")
+            return redirect("device_detail", pk=device.pk)
+    else:
+        # Start with a blank form, with "Ready to Deploy" picked as the status.
+        form = DeviceForm(initial={"status": Status.objects.filter(name="Ready to Deploy").first()})
+
+    return render(request, "inventory/device_form.html", {"form": form, "device": None})
+
+
+@role_required(ADMIN, TECHNICIAN)
+def device_edit(request, pk):
+    """The "Edit device" page."""
+
+    device = get_object_or_404(Device, pk=pk)
+    # Remember the status before any changes, so we can tell if it changed.
+    old_status = device.status
+
+    if request.method == "POST":
+        # instance=device: fill the form from this device, and save changes back to it.
+        form = DeviceForm(request.POST, instance=device)
+        if form.is_valid():
+            device = form.save()
+            if device.status != old_status:
+                ActivityLog.record(device, ActivityLog.STATUS_CHANGE, user=request.user,
+                                   notes=f"{old_status} → {device.status}")
+            if form.has_changed():
+                ActivityLog.record(device, ActivityLog.UPDATED, user=request.user,
+                                   notes="Changed: " + ", ".join(form[name].label for name in form.changed_data))
+            messages.success(request, f"Device {device.asset_tag} was saved.")
+            return redirect("device_detail", pk=device.pk)
+    else:
+        form = DeviceForm(instance=device)
+
+    return render(request, "inventory/device_form.html", {"form": form, "device": device})
+
+
+@role_required(ADMIN)  # Only Admins can delete. Technicians never see this page.
+def device_delete(request, pk):
+    """Asks "are you sure?" first; the device is only deleted when that's confirmed (POST)."""
+
+    device = get_object_or_404(Device, pk=pk)
+    if request.method == "POST":
+        tag = device.asset_tag
+        device.delete()
+        messages.success(request, f"Device {tag} was deleted.")
+        return redirect("device_list")
+    return render(request, "inventory/device_confirm_delete.html", {"device": device})

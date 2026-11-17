@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% comment %}
+  "Are you sure?" before deleting a device. Nothing is deleted
+  unless the red button is pressed.
+{% endcomment %}
+
+{% block title %}Delete {{ device.asset_tag }}{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-danger" style="max-width: 36rem">
+  <div class="card-body">
+    <h1 class="h4">Delete {{ device.asset_tag }}?</h1>
+    <p>This permanently removes the device <strong>and its whole history</strong>. It can't be undone.</p>
+    <p class="text-muted small">Tip: if the device is retired, lost or stolen, change its status instead, so its history is kept for reports.</p>
+    <form method="post" class="d-flex gap-2">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Yes, delete it</button>
+      <a href="{% url 'device_detail' device.pk %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
