@@ -1,0 +1,72 @@
+# docker-compose.yml describes every container TAKE IT needs and how they
+# connect. One command (docker compose up) starts them all together.
+
+services:
+
+  # ---- The database container ----
+  db:
+    # Use the official PostgreSQL 17 image (works on PCs and Raspberry Pi).
+    image: postgres:17
+    # Read the database name, user and password from our .env file.
+    env_file: .env
+    # Store the database files in a named "volume" so the data survives
+    # when the container is stopped, deleted or upgraded.
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    # If the computer reboots, start the database again automatically.
+    restart: unless-stopped
+    # Every few seconds, ask Postgres "are you ready?" so the app can wait for it.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---- The TAKE IT app container ----
+  web:
+    # Build this container from the Dockerfile in this folder.
+    build: .
+    # Read our settings (secret key, database password, etc.) from .env.
+    env_file: .env
+    # Tell the app the database lives in the container named "db".
+    environment:
+      POSTGRES_HOST: db
+    # Start Django's built-in development web server on port 8000.
+    command: python manage.py runserver 0.0.0.0:8000
+    # Share this folder with the container, so code changes show up instantly.
+    volumes:
+      - .:/app
+    # Connect port APP_PORT on your computer to port 8000 in the container.
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    # Don't start the app until the database says it's ready.
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---- The backup container ----
+  backup:
+    # Same Postgres image, because it already has the backup tools (pg_dump, psql).
+    image: postgres:17
+    env_file: .env
+    # Tell the backup tools which database to connect to, and how to log in.
+    environment:
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    # Share our scripts with the container, and save backups to ./backups on your computer.
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./backups:/backups
+    # Run the nightly backup loop instead of starting another database.
+    command: sh /scripts/backup-nightly.sh
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+# Named volumes: storage that Docker keeps safe between restarts.
+volumes:
+  db_data:

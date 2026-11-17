@@ -1,0 +1,8 @@
+# .dockerignore lists files Docker should NOT copy into the app image.
+# Keeps secrets out of the image and keeps the image small.
+.env
+.git
+backups/
+exports/
+__pycache__/
+*.pyc

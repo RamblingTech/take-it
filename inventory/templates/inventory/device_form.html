@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% comment %}
+  The add/edit device page. The same template does both jobs:
+  "device" is empty when adding, and filled in when editing.
+{% endcomment %}
+
+{% block title %}{% if device %}Edit {{ device.asset_tag }}{% else %}Add device{% endif %}{% endblock %}
+
+{% block content %}
+<a href="{% if device %}{% url 'device_detail' device.pk %}{% else %}{% url 'device_list' %}{% endif %}" class="small">&larr; Back</a>
+<h1 class="h3 mt-2 mb-4">{% if device %}Edit {{ device.asset_tag }}{% else %}Add device{% endif %}</h1>
+
+{# novalidate: let Django do the checking, so all problems show the same way. #}
+<form method="post" novalidate>
+  {% csrf_token %}
+
+  {# Problems that aren't about one box in particular. #}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <div class="row g-3">
+        {# Loop over the normal boxes. Each one shows its label, the box, help text and any errors. #}
+        {% for box in form.standard_boxes %}
+          <div class="{% if box.name == 'notes' %}col-12{% else %}col-md-6{% endif %}">
+            <label for="{{ box.id_for_label }}" class="form-label">{{ box.label }}{% if box.field.required %} *{% endif %}</label>
+            {{ box }}
+            {% if box.help_text %}<div class="form-text">{{ box.help_text }}</div>{% endif %}
+            {% for error in box.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# The Admin's custom fields get their own section (only if there are any). #}
+  {% with custom_boxes=form.custom_field_boxes %}
+    {% if custom_boxes %}
+      <div class="card shadow-sm mb-4">
+        <div class="card-body">
+          <h2 class="h6 text-uppercase text-muted mb-3">More details</h2>
+          <div class="row g-3">
+            {% for box in custom_boxes %}
+              <div class="col-md-6">
+                {% if box.widget_type == "checkbox" %}
+                  <div class="form-check mt-4">{{ box }} <label for="{{ box.id_for_label }}" class="form-check-label">{{ box.label }}</label></div>
+                {% else %}
+                  <label for="{{ box.id_for_label }}" class="form-label">{{ box.label }}{% if box.field.required %} *{% endif %}</label>
+                  {{ box }}
+                {% endif %}
+                {% if box.help_text %}<div class="form-text">{{ box.help_text }}</div>{% endif %}
+                {% for error in box.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <button type="submit" class="btn btn-primary">Save</button>
+</form>
+{% endblock %}

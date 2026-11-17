@@ -1,0 +1,14 @@
+# requirements.txt lists the Python add-on packages TAKE IT needs.
+# Docker installs everything on this list when it builds the app image.
+
+# Django: the web framework that TAKE IT is built on.
+Django>=5.2,<5.3
+
+# psycopg: the "translator" that lets Python talk to the PostgreSQL database.
+psycopg[binary]>=3.2,<3.3
+
+# Pillow: lets Django handle image uploads, such as the company logo.
+Pillow>=11,<14
+
+# tzdata: the world's list of time zones, so each company can pick its own.
+tzdata>=2025.1

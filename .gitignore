@@ -1,0 +1,21 @@
+# .gitignore tells Git which files it should NEVER save to GitHub.
+
+# Secrets and settings for one install (passwords, keys). Never share these.
+.env
+
+# Database backups and data exports (they hold real company data).
+backups/
+exports/
+
+# Files Python creates by itself while running. Safe to throw away.
+__pycache__/
+*.pyc
+
+# Uploaded files (like a company logo) saved by the running app.
+media/
+
+# Clutter from editors and operating systems.
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

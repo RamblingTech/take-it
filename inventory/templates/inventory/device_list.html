@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% comment %}
+  The device list page: the search box and filters on top,
+  and the table of devices underneath.
+{% endcomment %}
+
+{% block title %}Devices{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Devices</h1>
+  {# Only Admins and Technicians see the Add button. #}
+  {% if can_edit_devices %}
+    <a href="{% url 'device_create' %}" class="btn btn-primary">+ Add device</a>
+  {% endif %}
+</div>
+
+{% comment %}
+  The search form. The hx- settings are HTMX instructions:
+    hx-get       ask this address for new results...
+    hx-trigger   ...whenever someone types (after a 300 ms pause) or changes a filter,
+    hx-target    and put what comes back into the box with id="device-table".
+    hx-push-url  also update the address bar, so the search can be bookmarked or shared.
+  Without JavaScript it still works as a normal form with the Search button.
+{% endcomment %}
+<form method="get" action="{% url 'device_list' %}" class="row g-2 mb-3"
+      hx-get="{% url 'device_list' %}" hx-trigger="input changed delay:300ms, change"
+      hx-target="#device-table" hx-push-url="true">
+
+  <div class="col-md-4">
+    <input type="search" name="q" value="{{ search }}" class="form-control"
+           placeholder="Search tag, serial, name, model or person…" autofocus>
+  </div>
+
+  {# One drop-down per filter. "selected" keeps your choice after the page refreshes. #}
+  <div class="col-md-2">
+    <select name="status" class="form-select">
+      <option value="">All statuses</option>
+      {% for status in statuses %}
+        <option value="{{ status.pk }}" {% if selected.status == status.pk|stringformat:"s" %}selected{% endif %}>{{ status.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <select name="category" class="form-select">
+      <option value="">All categories</option>
+      {% for category in categories %}
+        <option value="{{ category.pk }}" {% if selected.category == category.pk|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <select name="location" class="form-select">
+      <option value="">All locations</option>
+      {% for location in locations %}
+        <option value="{{ location.pk }}" {% if selected.location == location.pk|stringformat:"s" %}selected{% endif %}>{{ location.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <noscript><button type="submit" class="btn btn-secondary w-100">Search</button></noscript>
+  </div>
+</form>
+
+{# The table lives in its own file, so live search can swap just this part. #}
+<div id="device-table">
+  {% include "inventory/_device_table.html" %}
+</div>
+{% endblock %}

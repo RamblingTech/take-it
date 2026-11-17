@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% comment %}
+  The login page. Django's built-in login view shows this template
+  and handles checking the username and password for us.
+{% endcomment %}
+
+{% block title %}Log in{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-sm-8 col-md-5">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-1">Log in to TAKE IT</h1>
+        <p class="text-muted mb-4">{{ organization.name }}</p>
+
+        {# Shown only when the username or password was wrong. #}
+        {% if form.errors %}
+          <div class="alert alert-danger">That username and password didn't match. Please try again.</div>
+        {% endif %}
+
+        <form method="post">
+          {# csrf_token: a hidden code that proves this form came from our own site. #}
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="id_username" class="form-label">Username</label>
+            <input type="text" name="username" id="id_username" class="form-control" autofocus required>
+          </div>
+          <div class="mb-4">
+            <label for="id_password" class="form-label">Password</label>
+            <input type="password" name="password" id="id_password" class="form-control" required>
+          </div>
+          {# After logging in, go back to the page the person was trying to reach. #}
+          <input type="hidden" name="next" value="{{ next }}">
+          <button type="submit" class="btn btn-primary w-100">Log in</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

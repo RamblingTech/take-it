@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% comment %}
+  One device's page: details on the left, custom fields underneath,
+  and its full history on the right.
+{% endcomment %}
+
+{% block title %}{{ device.asset_tag }}{% endblock %}
+
+{% block content %}
+<a href="{% url 'device_list' %}" class="small">&larr; All devices</a>
+
+<div class="d-flex align-items-center gap-3 mt-2 mb-4">
+  <h1 class="h3 mb-0">{{ device.asset_tag }}</h1>
+  <span class="badge text-bg-secondary fs-6">{{ device.status }}</span>
+  <div class="ms-auto d-flex gap-2">
+    {% if can_edit_devices %}<a href="{% url 'device_edit' device.pk %}" class="btn btn-outline-primary">Edit</a>{% endif %}
+    {% if is_admin %}<a href="{% url 'device_delete' device.pk %}" class="btn btn-outline-danger">Delete</a>{% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-muted mb-3">Details</h2>
+        {# <dl> is an HTML "description list": label (dt) then value (dd). #}
+        <dl class="row mb-0">
+          <dt class="col-5">Name</dt>          <dd class="col-7">{{ device.name|default:"—" }}</dd>
+          <dt class="col-5">Model</dt>         <dd class="col-7">{{ device.model }}</dd>
+          <dt class="col-5">Category</dt>      <dd class="col-7">{{ device.model.category }}</dd>
+          <dt class="col-5">Serial</dt>        <dd class="col-7">{{ device.serial|default:"—" }}</dd>
+          <dt class="col-5">Holder</dt>        <dd class="col-7">{{ device.current_holder|default:"—" }}</dd>
+          <dt class="col-5">Location</dt>      <dd class="col-7">{{ device.current_location|default:"—" }}</dd>
+          <dt class="col-5">Purchased</dt>     <dd class="col-7">{{ device.purchase_date|default:"—" }}</dd>
+          <dt class="col-5">Added</dt>         <dd class="col-7">{{ device.created_at|date:"M j, Y" }}{% if device.created_by %} by {{ device.created_by }}{% endif %}</dd>
+        </dl>
+        {% if device.notes %}
+          <hr><p class="mb-0" style="white-space: pre-line">{{ device.notes }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if custom_fields %}
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h2 class="h6 text-uppercase text-muted mb-3">More details</h2>
+          <dl class="row mb-0">
+            {% for field, value in custom_fields %}
+              <dt class="col-5">{{ field.name }}</dt>
+              <dd class="col-7">
+                {% if field.field_type == "yes_no" %}{{ value|yesno:"Yes,No,—" }}{% else %}{{ value|default:"—" }}{% endif %}
+              </dd>
+            {% endfor %}
+          </dl>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-muted mb-3">History</h2>
+        <ul class="list-group list-group-flush">
+          {% for entry in history %}
+            <li class="list-group-item px-0">
+              <div class="d-flex justify-content-between">
+                <strong>{{ entry.get_action_display }}</strong>
+                <span class="small text-muted">{{ entry.timestamp|date:"M j, Y g:i A" }}</span>
+              </div>
+              <div class="small text-muted">
+                {% if entry.person %}To {{ entry.person }} · {% endif %}
+                {% if entry.location %}At {{ entry.location }} · {% endif %}
+                {% if entry.status %}{{ entry.status }}{% endif %}
+                {% if entry.user %} · by {{ entry.user }}{% endif %}
+              </div>
+              {% if entry.notes %}<div class="small">{{ entry.notes }}</div>{% endif %}
+            </li>
+          {% empty %}
+            <li class="list-group-item px-0 text-muted">No history yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
