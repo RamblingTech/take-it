@@ -56,6 +56,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Our own: show dates and times in the company's time zone.
+    "core.middleware.OrganizationTimezoneMiddleware",
 ]
 
 # The file that lists every web address (URL) in TAKE IT.
@@ -124,8 +126,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-# Times are saved in UTC in the database. Each company's own time zone
-# will come from its Organization settings later.
+# Times are saved in UTC in the database, and shown in the company's own
+# time zone (from Organization settings) by core.middleware.
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True

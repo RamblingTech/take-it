@@ -14,6 +14,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # Django's ready-made login and logout pages, at /accounts/login/ and /accounts/logout/.
     path("accounts/", include("django.contrib.auth.urls")),
+    # Device pages, at /devices/...
+    path("devices/", include("inventory.urls")),
     # Everything else is handled by our core app (starting with the home page).
     path("", include("core.urls")),
 ]

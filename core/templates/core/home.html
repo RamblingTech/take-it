@@ -22,6 +22,8 @@
   </div>
 </div>
 
+<a href="{% url 'device_list' %}" class="btn btn-primary">View devices</a>
+
 {# Only Admins see the link to the back-office admin pages. #}
 {% if is_admin %}
   <a href="{% url 'admin:index' %}" class="btn btn-outline-secondary">Open admin settings</a>

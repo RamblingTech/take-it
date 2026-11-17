@@ -1,0 +1,50 @@
+{% comment %}
+  Just the table of devices. Used two ways: inside device_list.html on a
+  normal visit, and on its own when live search asks for fresh results.
+  (The underscore at the start of the file name is a reminder that it's a piece of a page.)
+{% endcomment %}
+
+<p class="text-muted small mb-2">{{ page.paginator.count }} device{{ page.paginator.count|pluralize }}</p>
+
+<div class="table-responsive bg-white shadow-sm rounded">
+  <table class="table table-hover align-middle mb-0">
+    <thead class="table-light">
+      <tr>
+        <th>Asset tag</th>
+        <th>Model</th>
+        <th>Serial</th>
+        <th>Status</th>
+        <th>Holder</th>
+        <th>Location</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for device in page %}
+        <tr>
+          <td><a href="{% url 'device_detail' device.pk %}" class="fw-semibold">{{ device.asset_tag }}</a>
+            {% if device.name %}<div class="small text-muted">{{ device.name }}</div>{% endif %}</td>
+          <td>{{ device.model }}<div class="small text-muted">{{ device.model.category }}</div></td>
+          <td>{{ device.serial|default:"—" }}</td>
+          <td><span class="badge text-bg-secondary">{{ device.status }}</span></td>
+          <td>{{ device.current_holder|default:"—" }}</td>
+          <td>{{ device.current_location|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">No devices match.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# Previous / Next buttons, only when there's more than one page. #}
+{% if page.has_other_pages %}
+  <nav class="d-flex justify-content-between align-items-center mt-3">
+    {% if page.has_previous %}
+      <a class="btn btn-outline-secondary btn-sm" hx-get="?{% if search %}q={{ search|urlencode }}&{% endif %}status={{ selected.status }}&category={{ selected.category }}&location={{ selected.location }}&page={{ page.previous_page_number }}" hx-target="#device-table" hx-push-url="true" href="?page={{ page.previous_page_number }}">Previous</a>
+    {% else %}<span></span>{% endif %}
+    <span class="small text-muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}
+      <a class="btn btn-outline-secondary btn-sm" hx-get="?{% if search %}q={{ search|urlencode }}&{% endif %}status={{ selected.status }}&category={{ selected.category }}&location={{ selected.location }}&page={{ page.next_page_number }}" hx-target="#device-table" hx-push-url="true" href="?page={{ page.next_page_number }}">Next</a>
+    {% else %}<span></span>{% endif %}
+  </nav>
+{% endif %}
