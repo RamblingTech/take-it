@@ -2,11 +2,12 @@
 models.py for the "inventory" app: the building blocks that describe
 TAKE IT's hardware.
 
-This file holds the "lookup" tables: lists an Admin fills in once and
-then picks from (manufacturers, categories, statuses, locations, people,
-and device models). The Device table itself comes in the next piece.
+It holds the "lookup" tables (lists an Admin fills in once and
+then picks from: manufacturers, categories, statuses, locations, people,
+device models), the custom fields, the Device itself, and its history.
 """
 
+from django.conf import settings
 from django.db import models
 
 
@@ -159,3 +160,162 @@ class AssetModel(models.Model):
 
     def __str__(self):
         return f"{self.manufacturer} {self.name}"
+
+
+class CustomField(models.Model):
+    """
+    An extra field an Admin adds to every device, e.g. "PO Number" or
+    "Ticket #". Each company can add its own without changing any code.
+
+    The definitions live here; each device stores its own values in
+    Device.custom_data.
+    """
+
+    TEXT = "text"
+    NUMBER = "number"
+    DATE = "date"
+    YES_NO = "yes_no"
+    CHOICE = "choice"
+    TYPE_CHOICES = [
+        (TEXT, "Text"),
+        (NUMBER, "Number"),
+        (DATE, "Date"),
+        (YES_NO, "Yes / No"),
+        (CHOICE, "Pick from a list"),
+    ]
+
+    # The label people see, e.g. "PO Number".
+    name = models.CharField(max_length=100, unique=True)
+    # A short computer-friendly name, e.g. "po_number". It's the label the value
+    # is saved under, so it should not change once devices have values.
+    key = models.SlugField(
+        max_length=50, unique=True,
+        help_text='Lowercase letters, numbers and underscores only, e.g. "po_number". Don\'t change it later.',
+    )
+    field_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TEXT)
+    # Only for "Pick from a list": the options, separated by commas.
+    choices = models.TextField(blank=True, help_text='For "Pick from a list" only: the options, separated by commas.')
+    required = models.BooleanField(default=False)
+    help_text = models.CharField(max_length=200, blank=True)
+    # Lower numbers are shown first on the device form.
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "name"]
+
+    def __str__(self):
+        return self.name
+
+    def choice_list(self):
+        """The list options as a Python list: "Red, Blue" -> ["Red", "Blue"]."""
+        return [option.strip() for option in self.choices.split(",") if option.strip()]
+
+
+class Device(models.Model):
+    """One physical piece of hardware, tracked by its asset tag."""
+
+    # The company's own label on the device. No two devices can share one.
+    asset_tag = models.CharField(max_length=50, unique=True)
+    # The manufacturer's serial number. Optional, but if filled in it must be unique (see Meta).
+    serial = models.CharField(max_length=100, blank=True)
+    # An optional friendly name, e.g. "Front desk PC".
+    name = models.CharField(max_length=150, blank=True)
+
+    model = models.ForeignKey(AssetModel, on_delete=models.PROTECT)
+    status = models.ForeignKey(Status, on_delete=models.PROTECT)
+
+    # Who has it and where it is. These are tracked SEPARATELY on purpose:
+    # a device can be with a person AND at a location at the same time.
+    # related_name: lets us ask a person "which devices do you hold?" (person.devices_held).
+    current_holder = models.ForeignKey(
+        Person, null=True, blank=True, on_delete=models.PROTECT, related_name="devices_held",
+    )
+    current_location = models.ForeignKey(
+        Location, null=True, blank=True, on_delete=models.PROTECT, related_name="devices_here",
+    )
+
+    purchase_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    # Values for the Admin's custom fields, saved as {"po_number": "12345", ...}.
+    # JSONField stores a whole dictionary in one column, so new custom fields
+    # never need a database change.
+    custom_data = models.JSONField(default=dict, blank=True)
+
+    # auto_now_add: filled in automatically when the device is first saved.
+    created_at = models.DateTimeField(auto_now_add=True)
+    # auto_now: updated automatically every time the device is saved.
+    updated_at = models.DateTimeField(auto_now=True)
+    # The TAKE IT user who added it. settings.AUTH_USER_MODEL is Django's User table.
+    # SET_NULL: if that user account is deleted, keep the device and leave this blank.
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+
+    class Meta:
+        ordering = ["asset_tag"]
+        constraints = [
+            # A serial number can't appear twice, but many devices may leave it blank.
+            models.UniqueConstraint(
+                fields=["serial"], condition=~models.Q(serial=""), name="unique_serial_when_filled_in",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.asset_tag} ({self.name or self.model})"
+
+
+class ActivityLog(models.Model):
+    """
+    The history book: one line for everything that happens to a device.
+    Reports are built from this later, so entries are never edited.
+    """
+
+    CREATED = "created"
+    UPDATED = "updated"
+    CHECKOUT = "checkout"
+    CHECKIN = "checkin"
+    STATUS_CHANGE = "status_change"
+    ACTION_CHOICES = [
+        (CREATED, "Created"),
+        (UPDATED, "Updated"),
+        (CHECKOUT, "Checked out"),
+        (CHECKIN, "Checked in"),
+        (STATUS_CHANGE, "Status changed"),
+    ]
+
+    # CASCADE: if a device is ever deleted, its history goes with it.
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="activity")
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    # Who and where the device went to, and its status, at the time of this entry.
+    person = models.ForeignKey(Person, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    location = models.ForeignKey(Location, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    status = models.ForeignKey(Status, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    notes = models.TextField(blank=True)
+    # db_index: makes "show activity between these dates" fast for reports.
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    # The TAKE IT user who did it.
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        # Newest first.
+        ordering = ["-timestamp"]
+
+    def __str__(self):
+        return f"{self.get_action_display()}: {self.device.asset_tag}"
+
+    @classmethod
+    def record(cls, device, action, user=None, notes=""):
+        """
+        Write one history line for a device, copying its current holder,
+        location and status so the entry stays accurate even if they change later.
+        """
+        return cls.objects.create(
+            device=device,
+            action=action,
+            person=device.current_holder,
+            location=device.current_location,
+            status=device.status,
+            notes=notes,
+            user=user,
+        )
