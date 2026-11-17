@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # ---- TAKE IT's own apps ----
     "core",  # Organization settings and shared pieces
+    "inventory",  # Devices and everything that describes them
 ]
 
 # Middleware are checkpoints every web request passes through, in order.
